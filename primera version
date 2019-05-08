@@ -1,0 +1,972 @@
+USE [master]
+GO
+/****** Object:  Database [NAMING]    Script Date: 07/05/2019 10:09:27 p. m. ******/
+CREATE DATABASE [NAMING]
+ CONTAINMENT = NONE
+ ON  PRIMARY 
+( NAME = N'NAMING', FILENAME = N'C:\Program Files\Microsoft SQL Server\MSSQL12.MSSQLSERVER\MSSQL\DATA\NAMING.mdf' , SIZE = 5120KB , MAXSIZE = UNLIMITED, FILEGROWTH = 1024KB )
+ LOG ON 
+( NAME = N'NAMING_log', FILENAME = N'C:\Program Files\Microsoft SQL Server\MSSQL12.MSSQLSERVER\MSSQL\DATA\NAMING_log.ldf' , SIZE = 2048KB , MAXSIZE = 2048GB , FILEGROWTH = 10%)
+GO
+ALTER DATABASE [NAMING] SET COMPATIBILITY_LEVEL = 120
+GO
+IF (1 = FULLTEXTSERVICEPROPERTY('IsFullTextInstalled'))
+begin
+EXEC [NAMING].[dbo].[sp_fulltext_database] @action = 'enable'
+end
+GO
+ALTER DATABASE [NAMING] SET ANSI_NULL_DEFAULT OFF 
+GO
+ALTER DATABASE [NAMING] SET ANSI_NULLS OFF 
+GO
+ALTER DATABASE [NAMING] SET ANSI_PADDING OFF 
+GO
+ALTER DATABASE [NAMING] SET ANSI_WARNINGS OFF 
+GO
+ALTER DATABASE [NAMING] SET ARITHABORT OFF 
+GO
+ALTER DATABASE [NAMING] SET AUTO_CLOSE OFF 
+GO
+ALTER DATABASE [NAMING] SET AUTO_SHRINK OFF 
+GO
+ALTER DATABASE [NAMING] SET AUTO_UPDATE_STATISTICS ON 
+GO
+ALTER DATABASE [NAMING] SET CURSOR_CLOSE_ON_COMMIT OFF 
+GO
+ALTER DATABASE [NAMING] SET CURSOR_DEFAULT  GLOBAL 
+GO
+ALTER DATABASE [NAMING] SET CONCAT_NULL_YIELDS_NULL OFF 
+GO
+ALTER DATABASE [NAMING] SET NUMERIC_ROUNDABORT OFF 
+GO
+ALTER DATABASE [NAMING] SET QUOTED_IDENTIFIER OFF 
+GO
+ALTER DATABASE [NAMING] SET RECURSIVE_TRIGGERS OFF 
+GO
+ALTER DATABASE [NAMING] SET  DISABLE_BROKER 
+GO
+ALTER DATABASE [NAMING] SET AUTO_UPDATE_STATISTICS_ASYNC OFF 
+GO
+ALTER DATABASE [NAMING] SET DATE_CORRELATION_OPTIMIZATION OFF 
+GO
+ALTER DATABASE [NAMING] SET TRUSTWORTHY OFF 
+GO
+ALTER DATABASE [NAMING] SET ALLOW_SNAPSHOT_ISOLATION OFF 
+GO
+ALTER DATABASE [NAMING] SET PARAMETERIZATION SIMPLE 
+GO
+ALTER DATABASE [NAMING] SET READ_COMMITTED_SNAPSHOT OFF 
+GO
+ALTER DATABASE [NAMING] SET HONOR_BROKER_PRIORITY OFF 
+GO
+ALTER DATABASE [NAMING] SET RECOVERY SIMPLE 
+GO
+ALTER DATABASE [NAMING] SET  MULTI_USER 
+GO
+ALTER DATABASE [NAMING] SET PAGE_VERIFY CHECKSUM  
+GO
+ALTER DATABASE [NAMING] SET DB_CHAINING OFF 
+GO
+ALTER DATABASE [NAMING] SET FILESTREAM( NON_TRANSACTED_ACCESS = OFF ) 
+GO
+ALTER DATABASE [NAMING] SET TARGET_RECOVERY_TIME = 0 SECONDS 
+GO
+ALTER DATABASE [NAMING] SET DELAYED_DURABILITY = DISABLED 
+GO
+EXEC sys.sp_db_vardecimal_storage_format N'NAMING', N'ON'
+GO
+USE [NAMING]
+GO
+/****** Object:  UserDefinedFunction [dbo].[fn_CostoProducto]    Script Date: 07/05/2019 10:09:27 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		<Author,,Name>
+-- Create date: <Create Date, ,>
+-- Description:	<Description, ,>
+-- =============================================
+CREATE FUNCTION [dbo].[fn_CostoProducto]
+( 
+   @NumProducto VARCHAR(20) 
+) 
+
+RETURNS DECIMAL(10,2) 
+AS 
+BEGIN 
+DECLARE @Suma DECIMAL(10,2), 
+@Costo DECIMAL(10,2) 
+
+SELECT @Suma =Sum(L.Cantidad * A.Costo) 
+    FROM ListaMateriales L inner join ARTICULO A on L.IdArticulo= a.IdArticulo  
+    WHERE L.NumProducto = @NumProducto 
+SET @Costo =@Suma 
+RETURN @Costo 
+END 
+
+GO
+/****** Object:  UserDefinedFunction [dbo].[fn_ObtenerCompraID]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		<Author,,Name>
+-- Create date: <Create Date, ,>
+-- Description:	<Description, ,>
+-- =============================================
+CREATE FUNCTION [dbo].[fn_ObtenerCompraID]
+()
+RETURNS 
+Varchar(13)
+AS
+BEGIN
+declare @CompraID as varchar(13)
+declare @FechaHoy as varchar(12)
+set @FechaHoy = (SELECT convert(VARCHAR(12), getdate(), 101)) -- 101 formatea la fecha a formato dd/mm/yyyy
+declare @FechaHoy112 as varchar(8)
+set @FechaHoy112=(SELECT convert(VARCHAR(10),GETDATE(), 112)) --112 formatea la fecha a formato yyyymmdd
+--yyyymmdd-0001
+declare @ContadorCompra as int
+set @ContadorCompra = (select MAX(cast(right(Id_Orden,4) as int)) from COMPRAS where fechaCompra >= @FechaHoy)
+if @ContadorCompra is null
+begin
+set @CompraID = @FechaHoy112 + '-0001'
+end
+else
+begin
+set @ContadorCompra = @ContadorCompra + 1
+set @CompraID= @FechaHoy112 + '-' + RIGHT('0000' + CONVERT(VARCHAR,@ContadorCompra), 4)
+end
+return @CompraID
+END
+
+
+GO
+/****** Object:  UserDefinedFunction [dbo].[fn_ObtenerVentaID]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		<Author,,Name>
+-- Create date: <Create Date, ,>
+-- Description:	<Description, ,>
+-- =============================================
+CREATE FUNCTION [dbo].[fn_ObtenerVentaID]
+()
+RETURNS Varchar(13) 
+AS 
+BEGIN 
+  declare @VentaID as varchar(13)
+  
+  declare @FechaHoy as date
+  set @FechaHoy = (SELECT convert(date, getdate(), 101))  -- 101 formatea la fecha a formato dd/mm/yyyy
+  
+  declare @FechaHoy112 as varchar(8)
+  set @FechaHoy112=(SELECT convert(VARCHAR(10),GETDATE(), 112)) --112 formatea la fecha a formato yyyy-mm-dd
+
+  --yyyymmdd-0001
+  declare @ContadorVenta as int
+  set @ContadorVenta = (select MAX(cast(right(ventaID,4) as int)) from Venta where fecha >= @FechaHoy)
+
+  if @ContadorVenta is null 
+  begin
+    set @VentaID = @FechaHoy112 + '-0001'
+  end 
+  else
+  begin
+    set @ContadorVenta = @ContadorVenta + 1
+    set @VentaID= @FechaHoy112 + '-' + RIGHT('0000' + CONVERT(VARCHAR,@ContadorVenta), 4) 
+  end
+  return @VentaID
+
+END
+
+
+GO
+/****** Object:  Table [dbo].[Acceso]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Acceso](
+	[Id_Usuario] [nchar](10) NOT NULL,
+	[Login] [nchar](25) NOT NULL,
+	[Password] [nchar](35) NOT NULL
+) ON [PRIMARY]
+
+GO
+/****** Object:  Table [dbo].[ARTICULO]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[ARTICULO](
+	[IdArticulo] [nvarchar](15) NOT NULL,
+	[Nombre] [nvarchar](100) NOT NULL,
+	[UnidadMedida] [nvarchar](50) NOT NULL,
+	[Max] [numeric](18, 0) NOT NULL,
+	[Min] [numeric](18, 0) NOT NULL,
+	[Costo] [numeric](18, 2) NOT NULL,
+	[CantidadExistente] [numeric](18, 0) NOT NULL,
+	[Estado] [datetime] NOT NULL,
+	[PrecioVenta] [numeric](18, 0) NOT NULL,
+	[TipoProd] [nvarchar](50) NOT NULL
+) ON [PRIMARY]
+
+GO
+/****** Object:  Table [dbo].[CATEGORIA]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[CATEGORIA](
+	[Id_Categoria] [nchar](10) NOT NULL,
+	[Nombre_Cat] [nchar](35) NOT NULL,
+	[Salario] [decimal](18, 2) NOT NULL
+) ON [PRIMARY]
+
+GO
+/****** Object:  Table [dbo].[COMBOSYOFERTAS]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[COMBOSYOFERTAS](
+	[NombreCombo] [nvarchar](50) NOT NULL,
+	[Tipo] [nvarchar](50) NOT NULL,
+	[FechaInicio] [datetime] NOT NULL,
+	[FechaFin] [datetime] NOT NULL,
+	[Precio] [numeric](18, 2) NOT NULL
+) ON [PRIMARY]
+
+GO
+/****** Object:  Table [dbo].[COMBOSYOFERTASDETALLES]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+SET ANSI_PADDING ON
+GO
+CREATE TABLE [dbo].[COMBOSYOFERTASDETALLES](
+	[NombreCombo] [nvarchar](50) NOT NULL,
+	[IdArticulo] [nvarchar](15) NOT NULL,
+	[ProductoID] [nvarchar](15) NOT NULL,
+	[TipoProducto] [varchar](15) NOT NULL
+) ON [PRIMARY]
+
+GO
+SET ANSI_PADDING OFF
+GO
+/****** Object:  Table [dbo].[COMPRAS]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[COMPRAS](
+	[Id_Orden] [nvarchar](15) NOT NULL,
+	[IdArticulo] [nvarchar](15) NOT NULL,
+	[FechaCompra] [date] NOT NULL,
+	[Cantidad] [numeric](18, 0) NOT NULL,
+	[Status] [nchar](10) NOT NULL
+) ON [PRIMARY]
+
+GO
+/****** Object:  Table [dbo].[DetalleVenta]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[DetalleVenta](
+	[VentaID] [nvarchar](50) NOT NULL,
+	[IdArticulo] [nvarchar](15) NOT NULL,
+	[Precio] [numeric](18, 3) NOT NULL,
+	[Cantidad] [numeric](18, 3) NOT NULL
+) ON [PRIMARY]
+
+GO
+/****** Object:  Table [dbo].[EMPLEADOS]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+SET ANSI_PADDING ON
+GO
+CREATE TABLE [dbo].[EMPLEADOS](
+	[Id_Usuario] [nchar](20) NOT NULL,
+	[Nombre] [nchar](20) NOT NULL,
+	[A_Paterno] [nchar](10) NOT NULL,
+	[A_Materno] [nchar](10) NOT NULL,
+	[Direccion] [varchar](50) NOT NULL,
+	[Tel] [varchar](10) NOT NULL,
+	[Email] [varchar](50) NOT NULL,
+	[F_Nac] [date] NOT NULL,
+	[RFC] [nchar](10) NOT NULL,
+	[F_ingreso] [date] NOT NULL,
+	[Id_Categoria] [nchar](10) NOT NULL,
+	[Foto] [nvarchar](50) NULL
+) ON [PRIMARY]
+
+GO
+SET ANSI_PADDING OFF
+GO
+/****** Object:  Table [dbo].[LISTAMATERIALES]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[LISTAMATERIALES](
+	[NumProducto] [nvarchar](15) NOT NULL,
+	[IdArticulo] [nvarchar](15) NOT NULL,
+	[UnidadMedida] [nvarchar](15) NOT NULL,
+	[Cantidad] [decimal](18, 3) NOT NULL
+) ON [PRIMARY]
+
+GO
+/****** Object:  Table [dbo].[PRODUCTOS]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[PRODUCTOS](
+	[NumProducto] [nvarchar](15) NOT NULL,
+	[Nombre] [nvarchar](150) NOT NULL,
+	[Costo] [numeric](18, 2) NOT NULL,
+	[Precio] [numeric](18, 2) NOT NULL
+) ON [PRIMARY]
+
+GO
+/****** Object:  Table [dbo].[VENTA]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[VENTA](
+	[VentaID] [nvarchar](50) NOT NULL,
+	[Id_Usuario] [nchar](10) NULL,
+	[Fecha] [date] NOT NULL,
+	[NumEmpleado] [nchar](10) NULL,
+	[ClienteID] [nchar](10) NULL
+) ON [PRIMARY]
+
+GO
+INSERT [dbo].[Acceso] ([Id_Usuario], [Login], [Password]) VALUES (N'543       ', N'hector                   ', N'martinez                           ')
+INSERT [dbo].[Acceso] ([Id_Usuario], [Login], [Password]) VALUES (N'10        ', N'ARGENTINA                ', N'NAVARRO                            ')
+INSERT [dbo].[Acceso] ([Id_Usuario], [Login], [Password]) VALUES (N'11        ', N'HECTOR                   ', N'MARTINEZ                           ')
+INSERT [dbo].[Acceso] ([Id_Usuario], [Login], [Password]) VALUES (N'11        ', N'BLEIRER                  ', N'ASUL0135                           ')
+INSERT [dbo].[ARTICULO] ([IdArticulo], [Nombre], [UnidadMedida], [Max], [Min], [Costo], [CantidadExistente], [Estado], [PrecioVenta], [TipoProd]) VALUES (N'100', N'COCA', N'PIEZA', CAST(40 AS Numeric(18, 0)), CAST(5 AS Numeric(18, 0)), CAST(20.00 AS Numeric(18, 2)), CAST(11 AS Numeric(18, 0)), CAST(N'2019-02-05 00:00:00.000' AS DateTime), CAST(27 AS Numeric(18, 0)), N'ARTICULO')
+INSERT [dbo].[ARTICULO] ([IdArticulo], [Nombre], [UnidadMedida], [Max], [Min], [Costo], [CantidadExistente], [Estado], [PrecioVenta], [TipoProd]) VALUES (N'006', N'TOMATE', N'KG', CAST(10 AS Numeric(18, 0)), CAST(1 AS Numeric(18, 0)), CAST(30.00 AS Numeric(18, 2)), CAST(500 AS Numeric(18, 0)), CAST(N'2019-05-07 00:00:00.000' AS DateTime), CAST(36 AS Numeric(18, 0)), N'VERDURA')
+INSERT [dbo].[CATEGORIA] ([Id_Categoria], [Nombre_Cat], [Salario]) VALUES (N'001       ', N'ADMINISTRADOR                      ', CAST(1500.00 AS Decimal(18, 2)))
+INSERT [dbo].[CATEGORIA] ([Id_Categoria], [Nombre_Cat], [Salario]) VALUES (N'002       ', N'VENDEDOR                           ', CAST(1000.00 AS Decimal(18, 2)))
+INSERT [dbo].[COMBOSYOFERTAS] ([NombreCombo], [Tipo], [FechaInicio], [FechaFin], [Precio]) VALUES (N'TOMATODO', N'VERDURA', CAST(N'2019-05-07 09:10:08.887' AS DateTime), CAST(N'2019-05-07 09:10:08.870' AS DateTime), CAST(30.00 AS Numeric(18, 2)))
+INSERT [dbo].[COMPRAS] ([Id_Orden], [IdArticulo], [FechaCompra], [Cantidad], [Status]) VALUES (N'20190502-0001', N'100', CAST(N'2019-05-02' AS Date), CAST(4 AS Numeric(18, 0)), N'COCA      ')
+INSERT [dbo].[DetalleVenta] ([VentaID], [IdArticulo], [Precio], [Cantidad]) VALUES (N'20190502-0001', N'100', CAST(27.000 AS Numeric(18, 3)), CAST(4.000 AS Numeric(18, 3)))
+INSERT [dbo].[DetalleVenta] ([VentaID], [IdArticulo], [Precio], [Cantidad]) VALUES (N'20190502-0001', N'100', CAST(27.000 AS Numeric(18, 3)), CAST(4.000 AS Numeric(18, 3)))
+INSERT [dbo].[EMPLEADOS] ([Id_Usuario], [Nombre], [A_Paterno], [A_Materno], [Direccion], [Tel], [Email], [F_Nac], [RFC], [F_ingreso], [Id_Categoria], [Foto]) VALUES (N'10                  ', N'10                  ', N'ARGENTINA ', N'CRUZ      ', N'MATAMOROS', N'8682552623', N'ARGENTINA@GMAIL.COM', CAST(N'1989-01-03' AS Date), N'2345HER   ', CAST(N'2009-02-04' AS Date), N'001       ', N'')
+INSERT [dbo].[EMPLEADOS] ([Id_Usuario], [Nombre], [A_Paterno], [A_Materno], [Direccion], [Tel], [Email], [F_Nac], [RFC], [F_ingreso], [Id_Categoria], [Foto]) VALUES (N'11                  ', N'HECTOR              ', N'MARTINEZ  ', N'CHAVEZ    ', N'MATAMOROS', N'4356758989', N'HECTOR@GMAIL.COM', CAST(N'1999-01-27' AS Date), N'346DHJFK  ', CAST(N'2019-02-06' AS Date), N'002       ', N'')
+INSERT [dbo].[EMPLEADOS] ([Id_Usuario], [Nombre], [A_Paterno], [A_Materno], [Direccion], [Tel], [Email], [F_Nac], [RFC], [F_ingreso], [Id_Categoria], [Foto]) VALUES (N'11                  ', N'JUAN                ', N'PEREZ     ', N'CASTRO    ', N'SAN JOSE', N'8941071', N'BL@HOTMAIL.COM', CAST(N'2019-05-07' AS Date), N'1996VA    ', CAST(N'2019-05-07' AS Date), N'002       ', N'')
+INSERT [dbo].[VENTA] ([VentaID], [Id_Usuario], [Fecha], [NumEmpleado], [ClienteID]) VALUES (N'20190502-0001', NULL, CAST(N'1900-01-01' AS Date), N'System.Dat', N'          ')
+INSERT [dbo].[VENTA] ([VentaID], [Id_Usuario], [Fecha], [NumEmpleado], [ClienteID]) VALUES (N'20190502-0001', NULL, CAST(N'1900-01-01' AS Date), N'System.Dat', N'          ')
+INSERT [dbo].[VENTA] ([VentaID], [Id_Usuario], [Fecha], [NumEmpleado], [ClienteID]) VALUES (N'20190507-0001', NULL, CAST(N'1900-01-01' AS Date), N'System.Dat', N'          ')
+INSERT [dbo].[VENTA] ([VentaID], [Id_Usuario], [Fecha], [NumEmpleado], [ClienteID]) VALUES (N'20190507-0001', NULL, CAST(N'1900-01-01' AS Date), N'System.Dat', N'          ')
+/****** Object:  StoredProcedure [dbo].[AccesoUserLogin]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		<Author,,Name>
+-- Create date: <Create Date,,>
+-- Description:	<Description,,>
+-- =============================================
+CREATE PROCEDURE [dbo].[AccesoUserLogin]
+@Login nchar(10)
+AS
+BEGIN
+	select EMPLEADOS. *, Acceso.Login, Acceso.Password, CATEGORIA.Nombre_Cat from EMPLEADOS inner join Acceso
+	on EMPLEADOS.Id_Usuario=Acceso.Id_Usuario inner join CATEGORIA 
+	on EMPLEADOS.Id_Categoria =CATEGORIA.Id_categoria where Acceso.Login=@login 
+
+end
+GO
+/****** Object:  StoredProcedure [dbo].[AccesoUsuario]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		<Author,,Name>
+-- Create date: <Create Date,,>
+-- Description:	<Description,,>
+-- =============================================
+CREATE PROCEDURE [dbo].[AccesoUsuario]
+@Id nchar(10)
+AS
+BEGIN
+	select EMPLEADOS.*, Acceso .Login,Acceso.Password,CATEGORIA.Nombre_Cat from EMPLEADOS inner join Acceso 
+	on EMPLEADOS.Id_Usuario=Acceso.Id_Usuario inner join CATEGORIA on EMPLEADOS.Id_Categoria=CATEGORIA.Id_Categoria 
+	where EMPLEADOS.Id_Usuario=@Id 
+
+END
+GO
+/****** Object:  StoredProcedure [dbo].[BORRAR_ARTICULO]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		<Author,,Name>
+-- Create date: <Create Date,,>
+-- Description:	<Description,,>
+-- =============================================
+CREATE PROCEDURE [dbo].[BORRAR_ARTICULO]
+@IdArticulo nvarchar(15)
+AS
+begin 
+delete from ARTICULO   where IdArticulo  = @IdArticulo
+end  
+
+GO
+/****** Object:  StoredProcedure [dbo].[BORRAR_COMBOS]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		<Author,,Name>
+-- Create date: <Create Date,,>
+-- Description:	<Description,,>
+-- =============================================
+CREATE PROCEDURE [dbo].[BORRAR_COMBOS]
+@NombreCombo as varchar(15)
+AS
+begin 
+delete from CombosyOfertas  where NombreCombo = @NombreCombo
+delete from CombosyOfertasdetalles  where NombreCombo = @NombreCombo
+end 
+
+GO
+/****** Object:  StoredProcedure [dbo].[BORRAR_EMPLEADO]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		<Author,,Name>
+-- Create date: <Create Date,,>
+-- Description:	<Description,,>
+-- =============================================
+CREATE PROCEDURE [dbo].[BORRAR_EMPLEADO]
+@Id_Usuario nchar(10)
+AS
+BEGIN
+	-- SET NOCOUNT ON added to prevent extra result sets from
+	-- interfering with SELECT statements.
+	SET NOCOUNT ON;
+
+    -- Insert statements for procedure here
+	Delete From Empleados where Id_Usuario=@Id_Usuario
+END
+
+GO
+/****** Object:  StoredProcedure [dbo].[BORRAR_PRODUCTOS]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		<Author,,Name>
+-- Create date: <Create Date,,>
+-- Description:	<Description,,>
+-- =============================================
+CREATE PROCEDURE [dbo].[BORRAR_PRODUCTOS]
+@NumProducto as nvarchar(15)
+AS
+begin
+delete from  Productos   where [NumProducto]=@NumProducto
+end
+
+GO
+/****** Object:  StoredProcedure [dbo].[DelCategoria]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		<Author,,Name>
+-- Create date: <Create Date,,>
+-- Description:	<Description,,>
+-- =============================================
+CREATE PROCEDURE [dbo].[DelCategoria]
+@Id_categoria nchar(10)
+AS
+BEGIN
+	-- SET NOCOUNT ON added to prevent extra result sets from
+	-- interfering with SELECT statements.
+	SET NOCOUNT ON;
+
+    -- Insert statements for procedure here
+	delete from Categoria where Id_categoria=@Id_categoria
+END
+
+GO
+/****** Object:  StoredProcedure [dbo].[DelEmpleado]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		<Author,,Name>
+-- Create date: <Create Date,,>
+-- Description:	<Description,,>
+-- =============================================
+CREATE PROCEDURE [dbo].[DelEmpleado]
+@Id_Usuario nchar(10)
+AS
+BEGIN
+	-- SET NOCOUNT ON added to prevent extra result sets from
+	-- interfering with SELECT statements.
+	SET NOCOUNT ON;
+
+    -- Insert statements for procedure here
+	Delete From Empleados where Id_Usuario=@Id_Usuario
+END
+GO
+/****** Object:  StoredProcedure [dbo].[DetalleCompra]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		<Author,,Name>
+-- Create date: <Create Date,,>
+-- Description:	<Description,,>
+-- =============================================
+CREATE PROCEDURE [dbo].[DetalleCompra]
+  @Id_Articulo nvarchar(15),
+  @Cantidad as numeric(18,3)
+ as 
+ BEGIN
+ SET NOCOUNT ON;
+ UPDATE ARTICULO SET CantidadExistente=CantidadExistente +@Cantidad 
+ WHERE IdArticulo =@Id_Articulo 
+
+ --update Articulo set CantidadExistente = CantidadExistente - 
+       --(select (@Cantidad * Cantidad) as CantidadTotal from ListaMateriales
+        --where IdArticulo=@Id_Articulo and ARTICULO.IdArticulo=Articulo.IdArticulo)
+        --where IdArticulo in (select IdArticulo  from ARTICULO  where IdArticulo=@Id_Articulo )
+ end 
+
+GO
+/****** Object:  StoredProcedure [dbo].[DetalleVentaProd]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		<Author,,Name>
+-- Create date: <Create Date,,>
+-- Description:	<Description,,>
+-- =============================================
+CREATE PROCEDURE [dbo].[DetalleVentaProd]
+  @Id_Articulo nvarchar(15),
+  @Cantidad as numeric(18,3)
+ as 
+ BEGIN
+ SET NOCOUNT ON;
+ UPDATE ARTICULO SET CantidadExistente=CantidadExistente +@Cantidad 
+ WHERE IdArticulo =@Id_Articulo 
+END
+
+GO
+/****** Object:  StoredProcedure [dbo].[INS_ARTICULOS]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		<Author,,Name>
+-- Create date: <Create Date,,>
+-- Description:	<Description,,>
+-- =============================================
+CREATE PROCEDURE [dbo].[INS_ARTICULOS]
+           @IdArticulo as nvarchar(15),
+           @Nombre as nvarchar(100),
+           @UnidadMedida as nvarchar(10),
+           @Min as numeric(18,2),
+           @Max as numeric(18,2),
+           @Costo as numeric(18,2),
+           @CantidadExistente as numeric(18,2),
+           @Vigencia as varchar(12),
+           @PrecioVenta as numeric(18,2),
+		   @TipoProd as nvarchar (15)
+           as
+
+INSERT INTO [NAMING] .[dbo].[ARTICULO]
+           ([IdArticulo] ,[Nombre],[UnidadMedida]
+           ,[Min] ,[Max],[Costo],[CantidadExistente],[Estado],[PrecioVenta],[TipoProd])
+     VALUES(@IdArticulo,@Nombre,@UnidadMedida,@Min,@Max,@Costo,@CantidadExistente,@Vigencia,@PrecioVenta,@TipoProd)
+GO
+/****** Object:  StoredProcedure [dbo].[INS_COMBOS]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		<Author,,Name>
+-- Create date: <Create Date,,>
+-- Description:	<Description,,>
+-- =============================================
+CREATE PROCEDURE [dbo].[INS_COMBOS]
+ @NombreCombo varchar(150),
+ @Tipo varchar(20),
+ @FechaInicio datetime,
+ @FechaFin datetime,
+ @Precio as numeric(18,2)
+ as
+ 
+ Insert into  CombosyOfertas(NombreCombo,Tipo,FechaInicio,FechaFin,Precio)
+   values(@NombreCombo,@Tipo,@FechaInicio,@FechaFin,@Precio)
+GO
+/****** Object:  StoredProcedure [dbo].[INS_CombosyOfertasDetalles]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		<Author,,Name>
+-- Create date: <Create Date,,>
+-- Description:	<Description,,>
+-- =============================================
+CREATE PROCEDURE [dbo].[INS_CombosyOfertasDetalles]
+ @NombreCombo varchar(150),
+ @ProductoID nvarchar(15),
+ @TipoProducto varchar(15)
+ as
+ 
+ Insert into  CombosyOfertasDetalles(NombreCombo,ProductoID,TipoProducto)
+   values(@NombreCombo,@ProductoID,@TipoProducto)
+GO
+/****** Object:  StoredProcedure [dbo].[INS_DETALLEVENTA]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		<Author,,Name>
+-- Create date: <Create Date,,>
+-- Description:	<Description,,>
+-- =============================================
+CREATE PROCEDURE [dbo].[INS_DETALLEVENTA]
+  @ventaID as varchar(15),
+  @Producto as varchar(50),
+  @Precio as numeric(18,2),
+  @Cantidad as numeric(18,2),
+  @TipoProd as varchar(15)
+  
+ as
+   insert into DetalleVenta (VentaID,IdArticulo,Precio,Cantidad)
+   values(@ventaID,  @Producto,@Precio,@Cantidad)
+   
+   if @TipoProd='ARTICULO'
+   begin
+     update ARTICULO  set CantidadExistente=CantidadExistente-@Cantidad where IdArticulo=@Producto
+	 update ARTICULO  set CantidadExistente = CantidadExistente - 
+       (select (@Cantidad * Cantidad) as CantidadTotal from ListaMateriales
+        where IdArticulo=@Producto and ListaMateriales.IdArticulo=Articulo.IdArticulo)
+        where IdArticulo  in (select IdArticulo  from ListaMateriales where IdArticulo=@Producto)
+
+   end
+   
+   if @TipoProd='Producto'
+   begin
+     update ARTICULO set CantidadExistente = CantidadExistente - 
+       (select (@Cantidad * Cantidad) as CantidadTotal from ListaMateriales
+        where NumProducto=@Producto and LISTAMATERIALES.IdArticulo=ARTICULO.IdArticulo)
+        where IdArticulo in (select IdArticulo from LISTAMATERIALES where NumProducto=@Producto)
+   end
+GO
+/****** Object:  StoredProcedure [dbo].[INS_PRODUCTOS]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		<Author,,Name>
+-- Create date: <Create Date,,>
+-- Description:	<Description,,>
+-- =============================================
+CREATE PROCEDURE [dbo].[INS_PRODUCTOS]
+           @NumProducto as nvarchar(15),
+           @Nombre as nvarchar(150),
+           @Costo as numeric(18,2),
+           @Precio as numeric(18,2)
+
+AS
+BEGIN
+INSERT INTO [Productos]([NumProducto],[Nombre],[Costo],[Precio])
+     VALUES (@NumProducto,@Nombre,@Costo,@Precio)
+
+END
+GO
+/****** Object:  StoredProcedure [dbo].[INS_VENTA]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		<Author,,Name>
+-- Create date: <Create Date,,>
+-- Description:	<Description,,>
+-- =============================================
+CREATE PROCEDURE [dbo].[INS_VENTA]
+  @ventaID as varchar(15),
+  @NumEmpleado as nchar(10),
+  @ClienteID as varchar(10)
+  
+ as
+   insert into VENTA (VentaID,NumEmpleado,Fecha,ClienteId)
+   values(@ventaID,  @NumEmpleado,GETDATE(),@ClienteID)
+
+
+GO
+/****** Object:  StoredProcedure [dbo].[InserAcceso]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		<Author,,Name>
+-- Create date: <Create Date,,>
+-- Description:	<Description,,>
+-- =============================================
+CREATE PROCEDURE [dbo].[InserAcceso]
+@Id_Usuario nchar(10),
+@Login nchar(25),
+@Password nchar(35)
+AS
+BEGIN
+	-- SET NOCOUNT ON added to prevent extra result sets from
+	-- interfering with SELECT statements.
+	SET NOCOUNT ON;
+
+    -- Insert statements for procedure here
+	insert into Acceso(Id_Usuario,Login,Password)
+	values(@Id_Usuario,@Login,@Password)
+END
+
+GO
+/****** Object:  StoredProcedure [dbo].[InserCategoria]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		<Author,,Name>
+-- Create date: <Create Date,,>
+-- Description:	<Description,,>
+-- =============================================
+CREATE PROCEDURE [dbo].[InserCategoria]
+@Id_categoria nchar(10),
+@Nombre_Cat nchar(35),
+@Salario money
+AS
+BEGIN
+	-- SET NOCOUNT ON added to prevent extra result sets from
+	-- interfering with SELECT statements.
+	SET NOCOUNT ON;
+
+    -- Insert statements for procedure here
+	insert into Categoria(Id_categoria,Nombre_Cat,Salario)
+	values (@Id_categoria,@Nombre_Cat,@Salario)
+END
+
+GO
+/****** Object:  StoredProcedure [dbo].[InsertEmpleados]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		<Author,,Name>
+-- Create date: <Create Date,,>
+-- Description:	<Description,,>
+-- =============================================
+CREATE PROCEDURE [dbo].[InsertEmpleados]
+@Id_Usuario nchar(10),
+@Nombre nchar(20),
+@A_Paterno nchar(10),
+@A_Materno nchar(10),
+@Direccion varchar(50),
+@Tel int,
+@Email varchar(50),
+@F_Nac date,
+@RFC nchar(10),
+@F_Ingreso date,
+@Id_Categoria nchar(10),
+@Foto image
+AS
+BEGIN
+	-- SET NOCOUNT ON added to prevent extra result sets from
+	-- interfering with SELECT statements.
+	SET NOCOUNT ON;
+
+    -- Insert statements for procedure here
+	insert into Empleados(Id_Usuario,Nombre,A_Paterno,A_Materno,Direccion,Tel,Email,F_Nac,RFC,F_Ingreso,Id_Categoria,Foto)
+	values(@Id_Usuario,@Nombre,@A_Paterno,@A_Materno,@Direccion,@Tel,@Email,@F_Nac,@RFC,@F_Ingreso,@Id_Categoria,@Foto)
+END
+GO
+/****** Object:  StoredProcedure [dbo].[MODIFICAR_ARTICULOS]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		<Author,,Name>
+-- Create date: <Create Date,,>
+-- Description:	<Description,,>
+-- =============================================
+CREATE PROCEDURE [dbo].[MODIFICAR_ARTICULOS]
+           @IDArticulo as nvarchar(15),
+           @Nombre as nvarchar(100),
+           @UnidadMedida as nvarchar(10),
+           @Minimo as numeric(18,2),
+           @Maximo as numeric(18,2),
+           @Costo as numeric(18,2),
+           @CantidadExistente as numeric(18,2),
+           @Vigencia as varchar(12),
+           @PrecioVenta as numeric(18,2),
+		   @TipoProd as nvarchar (15)
+           as
+UPDATE ARTICULO  
+        set [Nombre]=@Nombre,[UnidadMedida]=@UnidadMedida
+           ,[Min]=@Minimo,[Max]=@Maximo,[Costo]=@Costo,
+           [CantidadExistente]=@CantidadExistente,[Estado]=@Vigencia
+           ,[PrecioVenta]=@PrecioVenta,[TipoProd]=@TipoProd
+           where [IdArticulo]= @IdArticulo  
+
+
+GO
+/****** Object:  StoredProcedure [dbo].[MODIFICAR_PRODUCTOS]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		<Author,,Name>
+-- Create date: <Create Date,,>
+-- Description:	<Description,,>
+-- =============================================
+CREATE PROCEDURE [dbo].[MODIFICAR_PRODUCTOS]
+           @NumProducto as nvarchar(15),
+           @Nombre as nvarchar(150),
+           @Costo as numeric(18,2),
+           @Precio as numeric(18,2)
+
+AS
+Update Productos set [Nombre]=@Nombre,[Costo]=@Costo,[Precio]=@Precio
+       where [NumProducto]=@NumProducto
+GO
+/****** Object:  StoredProcedure [dbo].[UpdateAcceso]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		<Author,,Name>
+-- Create date: <Create Date,,>
+-- Description:	<Description,,>
+-- =============================================
+CREATE PROCEDURE [dbo].[UpdateAcceso]
+@Id_Usuario nchar(10),
+@Login nchar(25),
+@Password nchar(35)
+AS
+BEGIN
+	-- SET NOCOUNT ON added to prevent extra result sets from
+	-- interfering with SELECT statements.
+	SET NOCOUNT ON;
+	SET NOCOUNT ON;
+    declare @reg as int
+	set @reg=(select COUNT(*) from Acceso where Id_Usuario=@Id_Usuario)
+	if @reg=0
+
+    -- Insert statements for procedure here
+	update Acceso set Login=@Login, Password=@Password
+	where Id_Usuario=@Id_Usuario
+END
+GO
+/****** Object:  StoredProcedure [dbo].[UpdateCategoria]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		<Author,,Name>
+-- Create date: <Create Date,,>
+-- Description:	<Description,,>
+-- =============================================
+CREATE PROCEDURE [dbo].[UpdateCategoria]
+@Id_Categoria nchar(10),
+@Nombre_Cat nchar(35),
+@Salario money
+AS
+BEGIN
+	-- SET NOCOUNT ON added to prevent extra result sets from
+	-- interfering with SELECT statements.
+	SET NOCOUNT ON;
+	declare @reg as int
+	set @reg=(select COUNT(*) from Categoria where Id_categoria=@Id_Categoria)
+	if @reg=0
+
+    -- Insert statements for procedure here
+	update Categoria set Nombre_Cat=@Nombre_Cat, Salario=@Salario
+	where Id_categoria=@Id_Categoria
+END
+GO
+/****** Object:  StoredProcedure [dbo].[UpdateEmpleado]    Script Date: 07/05/2019 10:09:28 p. m. ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		<Author,,Name>
+-- Create date: <Create Date,,>
+-- Description:	<Description,,>
+-- =============================================
+CREATE PROCEDURE [dbo].[UpdateEmpleado]
+@Id_Usuario nchar(10),
+@Nombre nchar(20),
+@A_Paterno nchar(10),
+@A_Materno nchar(10),
+@Direccion varchar(50),
+@Tel int,
+@E_mail varchar(50),
+@F_Nac date,
+@Rfc nchar(10),
+@F_Ingreso date,
+@Id_Categoria nchar(10),
+@Foto nvarchar(50)
+AS
+BEGIN
+	-- SET NOCOUNT ON added to prevent extra result sets from
+	-- interfering with SELECT statements.
+	SET NOCOUNT ON;
+	declare @reg as int
+	set @reg=(select count(*) from Empleados where Id_Usuario=@Id_Usuario)
+	if @reg=0
+	begin
+    -- Insert statements for procedure here
+	update EMPLEADOS set Nombre=@Nombre,A_Paterno=@A_Paterno,A_Materno=@A_Materno,Direccion=@Direccion,Tel=@Tel,Email=@E_mail,F_Nac=@F_Nac,Rfc=@Rfc,F_Ingreso=@F_Ingreso,Id_Categoria=@Id_Categoria,Foto=@Foto
+	where Id_Usuario=@Id_Usuario
+	end
+	end 
+
+GO
+USE [master]
+GO
+ALTER DATABASE [NAMING] SET  READ_WRITE 
+GO
+
